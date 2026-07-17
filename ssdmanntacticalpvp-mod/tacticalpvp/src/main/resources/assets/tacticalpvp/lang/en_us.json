@@ -1,0 +1,41 @@
+{
+  "modid.tacticalpvp": "Tactical PvP: Linear Sector Control",
+
+  "message.tacticalpvp.match_started": "The match has begun! Fight for control of the sectors!",
+  "message.tacticalpvp.match_stopped": "The match has been stopped by an administrator.",
+  "message.tacticalpvp.match_paused": "The match has been paused by an administrator. Captures and scoring are frozen.",
+  "message.tacticalpvp.match_resumed": "The match has resumed!",
+  "message.tacticalpvp.match_ended": "Match over! Winner: %s",
+  "message.tacticalpvp.draw": "Draw",
+  "message.tacticalpvp.team_neutral": "Neutral",
+  "message.tacticalpvp.team_red": "Red Team",
+  "message.tacticalpvp.team_blue": "Blue Team",
+
+  "message.tacticalpvp.waiting_lobby": "Respawning in %s...",
+  "message.tacticalpvp.respawned": "You have been deployed to the frontline!",
+
+  "message.tacticalpvp.neutralizing_progress": "Neutralizing Point %s: %s%%",
+  "message.tacticalpvp.capturing_progress": "Capturing Point %s: %s%%",
+  "message.tacticalpvp.point_captured": "Point %s captured!",
+  "message.tacticalpvp.point_captured_broadcast": "Point %s has been captured by %s!",
+
+  "command.tacticalpvp.match_started": "Match started.",
+  "command.tacticalpvp.match_stopped": "Match stopped.",
+  "command.tacticalpvp.match_paused": "Match paused.",
+  "command.tacticalpvp.match_resumed": "Match resumed.",
+  "command.tacticalpvp.pause_failed": "Cannot pause: no match is currently running.",
+  "command.tacticalpvp.resume_failed": "Cannot resume: the match is not currently paused.",
+  "command.tacticalpvp.initialized": "Tactical PvP initialized. Teams are ready and the timer is set to its static preset value.",
+  "command.tacticalpvp.teams_randomized": "Teams randomized: %s Red, %s Blue.",
+  "command.tacticalpvp.purged": "All capture points, lobbies, and match data have been purged.",
+  "command.tacticalpvp.duration_infinite": "Match duration set to infinite (score limit only).",
+  "command.tacticalpvp.duration_set": "Match duration set to %s seconds.",
+  "command.tacticalpvp.scorelimit_set": "Score limit set to %s kills.",
+  "command.tacticalpvp.lobbytimer_set": "Waiting lobby respawn timer set to %s seconds.",
+  "command.tacticalpvp.lobby_set": "%s waiting lobby set at %s.",
+  "command.tacticalpvp.point_created": "%s capture point %s created spanning %s to %s.",
+  "command.tacticalpvp.point_deleted": "%s capture point %s deleted.",
+  "command.tacticalpvp.point_delete_not_found": "No %s capture point with index %s exists.",
+  "command.tacticalpvp.error_index1_neutral": "Index 1 is reserved for the single shared/neutral center point - use 'neutral' as the designation.",
+  "command.tacticalpvp.error_neutral_requires_index1": "Only index 1 may be neutral - indices 2-30 must be designated red or blue."
+}
