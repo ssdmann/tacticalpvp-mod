@@ -1,9 +1,10 @@
 package com.tacticalpvp.mod.punish;
 
 import com.tacticalpvp.mod.util.PlayerTeamTracker;
-import com.tacticalpvp.mod.util.Team;
 import com.tacticalpvp.mod.util.TacticalWorldData;
+import com.tacticalpvp.mod.util.Team;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
@@ -13,17 +14,12 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.Iterator;
 
-/**
- * Щотіку зменшує remainingTicks для кожного PunishEntry. Список зберігається
- * у World Save Data, тому таймери переживають рестарт сервера (п.4 специфікації).
- * Після завершення: Survival Mode + телепорт у лобі команди гравця.
- */
 public class PunishTickHandler {
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        var server = ServerLifecycleHooks.getCurrentServer();
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;
         ServerLevel level = server.overworld();
         TacticalWorldData data = TacticalWorldData.get(level);
@@ -34,28 +30,38 @@ public class PunishTickHandler {
             PunishEntry entry = it.next();
             entry.remainingTicks--;
             changed = true;
+
+            ServerPlayer player = server.getPlayerList().getPlayer(entry.playerId);
+
             if (entry.remainingTicks <= 0) {
-                releasePlayer(server, data, entry.playerId);
+                if (player != null) {
+                    releasePlayer(server, data, player);
+                }
                 it.remove();
+            } else if (player != null) {
+                // Захист: якщо покараний гравець намагається втекти із в'язниці
+                if (data.punishPoint != null && player.distanceToSqr(data.punishPoint.getX(), data.punishPoint.getY(), data.punishPoint.getZ()) > 25.0) {
+                    player.teleportTo(level, data.punishPoint.getX() + 0.5, data.punishPoint.getY(), data.punishPoint.getZ() + 0.5, player.getYRot(), player.getXRot());
+                }
+                player.setGameMode(GameType.ADVENTURE);
             }
         }
         if (changed) data.setDirty();
     }
 
-    private void releasePlayer(net.minecraft.server.MinecraftServer server, TacticalWorldData data, java.util.UUID playerId) {
-        ServerPlayer player = server.getPlayerList().getPlayer(playerId);
-        if (player == null) return; // гравець офлайн - таймер вже спливав збережений; при вході окремо не довідродиться автоматично,
-                                     // тому рекомендовано перевіряти punishEntries також при вході гравця (PlayerLoggedInEvent).
-
+    private void releasePlayer(MinecraftServer server, TacticalWorldData data, ServerPlayer player) {
+        // Повертаємо режим Survival
         player.setGameMode(GameType.SURVIVAL);
-        Team team = PlayerTeamTracker.get(playerId);
+
+        Team team = PlayerTeamTracker.get(player.getUUID());
         BlockPos lobby = team == Team.RED ? data.matchState.redLobby
                 : team == Team.BLUE ? data.matchState.blueLobby
                 : data.matchState.generalLobby;
+
         if (lobby != null) {
-            player.teleportTo(server.overworld(), lobby.getX() + 0.5, lobby.getY(), lobby.getZ() + 0.5,
-                    player.getYRot(), player.getXRot());
+            player.teleportTo(server.overworld(), lobby.getX() + 0.5, lobby.getY(), lobby.getZ() + 0.5, player.getYRot(), player.getXRot());
         }
-        player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.tacticalpvp.punish_released"));
+
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§aТермін вашого покарання вичерпано. Вас повернено у гру!"));
     }
 }

@@ -47,17 +47,19 @@ public class PunishCommands {
             return 0;
         }
 
+        // РЕАЛЬНІ хвилини (1 хв = 60 * 20 тіків)
+        int ticks = minutes * 60 * 20;
+
         target.getInventory().clearContent();
         target.setGameMode(GameType.ADVENTURE);
         target.teleportTo(src.getLevel(), data.punishPoint.getX() + 0.5, data.punishPoint.getY(),
                 data.punishPoint.getZ() + 0.5, target.getYRot(), target.getXRot());
 
-        int ticks = minutes * 60 * 20;
         data.punishEntries.removeIf(e -> e.playerId.equals(target.getUUID()));
         data.punishEntries.add(new PunishEntry(target.getUUID(), ticks));
         data.setDirty();
 
-        src.sendSuccess(() -> Component.translatable("command.tacticalpvp.player_punished", target.getName().getString(), minutes), true);
+        src.sendSuccess(() -> Component.literal("Гравця " + target.getName().getString() + " відправлено у в'язницю на " + minutes + " реальних хв."), true);
         return 1;
     }
 }

@@ -13,19 +13,22 @@ import net.minecraft.world.level.saveddata.SavedData;
 import java.util.*;
 
 /**
- * Єдине джерело істини для всіх персистентних даних мода:
- * точки захоплення, зони вибору команди, координата в'язниці, активні покарання,
- * стан матчу. Зберігається у папці world/data/tacticalpvp.dat.
+ * Єдине джерело істини для всіх персистентних даних мода.
+ * Зберігається у папці world/data/tacticalpvp_data.dat.
  */
 public class TacticalWorldData extends SavedData {
 
     public static final String ID = "tacticalpvp_data";
 
-    public final Map<Integer, CapturePoint> points = new LinkedHashMap<>();
+    // Ключ змінено з Integer на String для підтримки унікальних ID ("2_red", "2_blue")
+    public final Map<String, CapturePoint> points = new LinkedHashMap<>();
     public final List<TeamZone> teamZones = new ArrayList<>();
     public BlockPos punishPoint;
     public final List<PunishEntry> punishEntries = new ArrayList<>();
     public MatchState matchState = new MatchState();
+
+    // Час захоплення точки у секундах (за замовчуванням 10 сек)
+    public int captureTimeSeconds = 10;
 
     public static TacticalWorldData get(ServerLevel level) {
         return level.getServer().overworld().getDataStorage().computeIfAbsent(
@@ -55,6 +58,7 @@ public class TacticalWorldData extends SavedData {
         tag.put("punishEntries", punishTag);
 
         tag.put("matchState", matchState.serialize());
+        tag.putInt("captureTimeSeconds", captureTimeSeconds);
         return tag;
     }
 
@@ -64,7 +68,8 @@ public class TacticalWorldData extends SavedData {
         ListTag pointsTag = tag.getList("points", net.minecraft.nbt.Tag.TAG_COMPOUND);
         for (int i = 0; i < pointsTag.size(); i++) {
             CapturePoint p = CapturePoint.deserialize(pointsTag.getCompound(i));
-            data.points.put(p.index, p);
+            // Використовуємо p.UniqueId() замість p.index як ключ мапи
+            data.points.put(p.UniqueId(), p);
         }
 
         ListTag zonesTag = tag.getList("teamZones", net.minecraft.nbt.Tag.TAG_COMPOUND);
@@ -84,6 +89,10 @@ public class TacticalWorldData extends SavedData {
 
         if (tag.contains("matchState")) {
             data.matchState = MatchState.deserialize(tag.getCompound("matchState"));
+        }
+
+        if (tag.contains("captureTimeSeconds")) {
+            data.captureTimeSeconds = tag.getInt("captureTimeSeconds");
         }
 
         return data;

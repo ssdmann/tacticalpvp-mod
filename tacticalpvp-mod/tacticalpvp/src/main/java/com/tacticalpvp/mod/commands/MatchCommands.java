@@ -8,8 +8,8 @@ import com.tacticalpvp.mod.TacticalPvpMod;
 import com.tacticalpvp.mod.item.ModItems;
 import com.tacticalpvp.mod.match.MatchState;
 import com.tacticalpvp.mod.util.PlayerTeamTracker;
-import com.tacticalpvp.mod.util.Team;
 import com.tacticalpvp.mod.util.TacticalWorldData;
+import com.tacticalpvp.mod.util.Team;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
@@ -17,18 +17,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * /match init | teleporteams | prestarttimer <min> | start | stop | pause | resume
- *      | duration <min> | scorelimit <n> | setgenerallobby | setlobby <red/blue> | lobbytimer <sec>
- *
- * Тривалості налаштовуються у РЕАЛЬНИХ хвилинах/секундах і конвертуються в тіки (1 сек = 20 тіків).
- */
 public class MatchCommands {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("match")
                 .requires(src -> src.hasPermission(2))
                 .then(Commands.literal("init").executes(MatchCommands::init))
+                .then(Commands.literal("resetall").executes(MatchCommands::resetAll))
                 .then(Commands.literal("teleporteams").executes(MatchCommands::teleportTeams))
                 .then(Commands.literal("prestarttimer")
                         .then(Commands.argument("minutes", IntegerArgumentType.integer(1, 20))
@@ -49,19 +44,39 @@ public class MatchCommands {
                                 .executes(MatchCommands::setTeamLobby)))
                 .then(Commands.literal("lobbytimer")
                         .then(Commands.argument("seconds", IntegerArgumentType.integer(0))
-                                .executes(MatchCommands::setLobbyTimer))));
+                                .executes(MatchCommands::setLobbyTimer)))
+                .then(Commands.literal("capturetime")
+                        .then(Commands.argument("seconds", IntegerArgumentType.integer(1, 300))
+                                .executes(MatchCommands::setCaptureTime))));
     }
 
     private static int init(CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack src = ctx.getSource();
         TacticalWorldData data = TacticalWorldData.get(src.getLevel());
         data.matchState = new MatchState();
-        // За специфікацією keepInventory має бути увімкнено глобально
         src.getServer().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_KEEPINVENTORY).set(true, src.getServer());
         PlayerTeamTracker.clear();
         TacticalPvpMod.CLASS_LIMIT_MANAGER.reset();
         data.setDirty();
         src.sendSuccess(() -> Component.translatable("command.tacticalpvp.match_initialized"), true);
+        return 1;
+    }
+
+    private static int resetAll(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        TacticalWorldData data = TacticalWorldData.get(src.getLevel());
+
+        data.points.clear();
+        data.teamZones.clear();
+        data.punishEntries.clear();
+        data.punishPoint = null;
+        data.matchState = new MatchState();
+
+        PlayerTeamTracker.clear();
+        TacticalPvpMod.CLASS_LIMIT_MANAGER.reset();
+        data.setDirty();
+
+        src.sendSuccess(() -> Component.literal("Усі дані мода (точки, зони, спавни, лобі, покарання) повністю очищено!"), true);
         return 1;
     }
 
@@ -75,16 +90,20 @@ public class MatchCommands {
             return 0;
         }
 
+        TacticalPvpMod.CLASS_LIMIT_MANAGER.reset();
+
         for (ServerPlayer p : src.getServer().getPlayerList().getPlayers()) {
             Team team = PlayerTeamTracker.get(p.getUUID());
             BlockPos target = team == Team.RED ? state.redLobby : team == Team.BLUE ? state.blueLobby : null;
             if (target == null) continue;
+
             p.teleportTo(src.getLevel(), target.getX() + 0.5, target.getY(), target.getZ() + 0.5, p.getYRot(), p.getXRot());
+            p.getInventory().clearContent();
             p.getInventory().add(new ItemStack(ModItems.ENDER_EYE_KIT.get()));
         }
 
         state.phase = MatchState.Phase.PRESTART;
-        state.prestartRemainingTicks = state.prestartTimerTicks;
+        state.prestartRemainingTicks = state.prestartTimerTicks > 0 ? state.prestartTimerTicks : 60 * 20;
         data.setDirty();
 
         src.sendSuccess(() -> Component.translatable("command.tacticalpvp.teams_teleported"), true);
@@ -190,6 +209,16 @@ public class MatchCommands {
         data.matchState.lobbyTimerTicks = seconds * 20;
         data.setDirty();
         src.sendSuccess(() -> Component.translatable("command.tacticalpvp.lobbytimer_set", seconds), true);
+        return 1;
+    }
+
+    private static int setCaptureTime(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
+        TacticalWorldData data = TacticalWorldData.get(src.getLevel());
+        data.captureTimeSeconds = seconds;
+        data.setDirty();
+        src.sendSuccess(() -> Component.literal("Час захоплення точок встановлено на: " + seconds + " сек."), true);
         return 1;
     }
 }

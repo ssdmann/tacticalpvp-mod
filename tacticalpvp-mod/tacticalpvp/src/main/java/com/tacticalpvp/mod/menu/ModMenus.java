@@ -12,5 +12,5 @@ public class ModMenus {
             DeferredRegister.create(Registries.MENU, TacticalPvpMod.MODID);
 
     public static final RegistryObject<MenuType<ClassSelectionMenu>> CLASS_SELECTION_MENU =
-            MENUS.register("class_selection", () -> IForgeMenuType.create(ClassSelectionMenu::new));
+            MENUS.register("class_selection", () -> IForgeMenuType.create((windowId, inv, data) -> new ClassSelectionMenu(windowId, inv, data)));
 }

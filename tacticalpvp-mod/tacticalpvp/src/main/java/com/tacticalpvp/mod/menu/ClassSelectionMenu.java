@@ -1,5 +1,6 @@
 package com.tacticalpvp.mod.menu;
 
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 
@@ -9,8 +10,14 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
  */
 public class ClassSelectionMenu extends AbstractContainerMenu {
 
+    // Основний конструктор (для сервера)
     public ClassSelectionMenu(int containerId, Inventory playerInventory) {
         super(ModMenus.CLASS_SELECTION_MENU.get(), containerId);
+    }
+
+    // Доданий конструктор для клієнта (з FriendlyByteBuf)
+    public ClassSelectionMenu(int containerId, Inventory playerInventory, FriendlyByteBuf extraData) {
+        this(containerId, playerInventory);
     }
 
     @Override

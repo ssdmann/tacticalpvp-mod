@@ -9,10 +9,7 @@ import java.util.UUID;
 
 /**
  * Відстежує, скільки гравців кожної команди вже обрали кожен клас, і перевіряє
- * чи не вичерпано відсотковий ліміт класу відносно загальної кількості гравців команди.
- *
- * Важливо: ліміт рахується від поточної кількості гравців у команді (тому перерахунок
- * відбувається щоразу під час спроби вибору класу).
+ * чи не вичерпано відсотковий ліміт класу з JSON-конфігу.
  */
 public class ClassLimitManager {
 
@@ -27,23 +24,23 @@ public class ClassLimitManager {
         counts.put(Team.BLUE, new EnumMap<>(PlayerClass.class));
     }
 
-    private int teamSize(Team team, java.util.function.ToIntFunction<Team> teamSizeSupplier) {
-        return teamSizeSupplier.applyAsInt(team);
-    }
-
     /**
-     * Перевіряє, чи є вільний слот для класу в команді.
-     * @param currentTeamSize поточна кількість гравців у команді (без урахування того, хто обирає)
+     * Перевіряє, чи є вільний слот для класу в команді на основі % з JSON конфігу.
      */
     public boolean hasFreeSlot(Team team, PlayerClass cls, int currentTeamSize) {
-        int limit = (int) Math.ceil(currentTeamSize * KitConfigLoader.percentLimit(team, cls) / 100.0);
-        limit = Math.max(limit, 1); // завжди мінімум 1 слот, щоб команда не лишилась без класу
+        if (team == Team.NEUTRAL) return false;
+
+        // Отримуємо відсоток з JSON конфігу через KitConfigLoader
+        double percent = KitConfigLoader.percentLimit(team, cls);
+        int limit = (int) Math.ceil((currentTeamSize * percent) / 100.0);
+        limit = Math.max(limit, 1); // Завжди як мінімум 1 слот
+
         int used = counts.get(team).getOrDefault(cls, 0);
         return used < limit;
     }
 
     public void assign(UUID playerId, Team team, PlayerClass cls) {
-        release(playerId); // прибрати попередній вибір, якщо був
+        release(playerId); // Прибрати попередній вибір, якщо був
         counts.get(team).merge(cls, 1, Integer::sum);
         playerClass.put(playerId, cls);
         playerTeam.put(playerId, team);
@@ -52,8 +49,8 @@ public class ClassLimitManager {
     public void release(UUID playerId) {
         PlayerClass prev = playerClass.remove(playerId);
         Team prevTeam = playerTeam.remove(playerId);
-        if (prev != null && prevTeam != null) {
-            counts.get(prevTeam).merge(prev, -1, Integer::sum);
+        if (prev != null && prevTeam != null && counts.containsKey(prevTeam)) {
+            counts.get(prevTeam).computeIfPresent(prev, (k, v) -> Math.max(0, v - 1));
         }
     }
 

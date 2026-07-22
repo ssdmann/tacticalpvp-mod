@@ -1,6 +1,7 @@
 package com.tacticalpvp.mod.network;
 
 import com.tacticalpvp.mod.TacticalPvpMod;
+import com.tacticalpvp.mod.item.ModItems;
 import com.tacticalpvp.mod.kits.ClassLimitManager;
 import com.tacticalpvp.mod.kits.KitDispenser;
 import com.tacticalpvp.mod.kits.PlayerClass;
@@ -9,15 +10,14 @@ import com.tacticalpvp.mod.util.Team;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
 /**
- * Клієнт -> Сервер: гравець обрав клас у GUI.
- * Сервер перевіряє відсотковий ліміт класу для команди гравця; якщо ліміт
- * вичерпано — блокує вибір і надсилає попередження, інакше видає кіт один раз
- * і забирає Око Ендера з інвентаря.
+ * Клієнт -> Сервер: обробка вибору класу у GUI.
+ * Перевіряє ліміт класу, видає кіт та ВИДАЛЯЄ Око Ендера з інвентарю.
  */
 public class SelectClassPacket {
 
@@ -50,18 +50,33 @@ public class SelectClassPacket {
             int teamSize = PlayerTeamTracker.countTeam(team);
             ClassLimitManager limitManager = TacticalPvpMod.CLASS_LIMIT_MANAGER;
 
+            // 1. Перевірка ліміту класу для команди
             if (!limitManager.hasFreeSlot(team, msg.requestedClass, teamSize)) {
                 player.sendSystemMessage(Component.translatable("message.tacticalpvp.class_limit_reached", msg.requestedClass.uaName));
-                return; // Гравець лишається у GUI (на клієнті ми просто закрили екран - можна за потреби
-                        // повторно відкрити; головне що клас НЕ призначено і кіт НЕ видано).
+                return;
             }
 
+            // 2. Точне видалення РІВНО 1 Ока Ендера з інвентарю
+            boolean removed = false;
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                ItemStack stack = player.getInventory().getItem(i);
+                if (stack.getItem() == ModItems.ENDER_EYE_KIT.get()) {
+                    stack.shrink(1);
+                    removed = true;
+                    break;
+                }
+            }
+
+            // Якщо з якоїсь причини Ока не виявилося, пробуємо ванільне очищення 1 штуки
+            if (!removed) {
+                int count = player.getInventory().clearOrCountMatchingItems(
+                        stack -> stack.getItem() == ModItems.ENDER_EYE_KIT.get(), 1, player.getInventory());
+                if (count <= 0) return; // Немає Ока — кіт не видаємо!
+            }
+
+            // 3. Призначаємо клас та видаємо кіт
             limitManager.assign(player.getUUID(), team, msg.requestedClass);
             KitDispenser.giveKit(player, team, msg.requestedClass);
-
-            // Забираємо Око Ендера (предмет вибору класу) з інвентаря - вибір одноразовий.
-            player.getInventory().clearOrCountMatchingItems(
-                    stack -> stack.getItem() == com.tacticalpvp.mod.item.ModItems.ENDER_EYE_KIT.get(), -1, player.getInventory());
 
             player.sendSystemMessage(Component.translatable("message.tacticalpvp.class_selected", msg.requestedClass.uaName));
         });

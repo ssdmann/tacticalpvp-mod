@@ -4,40 +4,48 @@ import com.tacticalpvp.mod.util.Team;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 
-/**
- * Точка захоплення (Capture Point).
- * Координати виконання адмін-команди — це ЦЕНТР зони. Висота зони нескінченна
- * (перевіряється лише по X/Z в межах length/width).
- *
- * Точка сама по собі більше НЕ є точкою відродження — вона лише "тригер/ключ".
- * Реальні точки відродження — це прив'язані TeamSpawnPoint (red/blue).
- */
 public class CapturePoint {
 
     public final int index;
+    public final Team assignedTeam; // До якої лінії/команди належить точка (RED чи BLUE)
     public BlockPos center;
     public int length;
     public int width;
 
+    // На старті будь-яка точка завжди НЕЙТРАЛЬНА
     public Team owner = Team.NEUTRAL;
 
-    // Прогрес захоплення 0-100. capturingTeam — хто зараз намагається захопити.
     public double captureProgress = 0.0;
     public Team capturingTeam = Team.NEUTRAL;
 
-    // Прив'язані спавнпоінти (можуть бути null, якщо ще не створені)
     public TeamSpawnPoint redSpawn;
     public TeamSpawnPoint blueSpawn;
 
-    public CapturePoint(int index, BlockPos center, int length, int width, Team initialOwner) {
+    public CapturePoint(int index, Team assignedTeam, BlockPos center, int length, int width) {
         this.index = index;
+        this.assignedTeam = assignedTeam;
+        this.center = center.below(); // Поправка Y - 1
+        this.length = length;
+        this.width = width;
+        this.owner = Team.NEUTRAL; // Завжди нейтральна при створенні!
+    }
+
+    private CapturePoint(int index, Team assignedTeam, BlockPos center, int length, int width, Team owner, boolean isRaw) {
+        this.index = index;
+        this.assignedTeam = assignedTeam;
         this.center = center;
         this.length = length;
         this.width = width;
-        this.owner = initialOwner;
+        this.owner = owner;
     }
 
-    /** Перевірка чи знаходиться позиція всередині зони (X/Z, висота нескінченна). */
+    /**
+     * Унікальний ID точки для карти/збережень (наприклад: "2_red" або "2_blue")
+     */
+    public String UniqueId() {
+        return index + "_" + assignedTeam.name().toLowerCase();
+    }
+
     public boolean isInside(BlockPos pos) {
         int halfL = length / 2;
         int halfW = width / 2;
@@ -45,9 +53,29 @@ public class CapturePoint {
                 && pos.getZ() >= center.getZ() - halfW && pos.getZ() <= center.getZ() + halfW;
     }
 
+    public void tickCaptureProgress(Team team, int totalCaptureTimeSeconds) {
+        if (totalCaptureTimeSeconds <= 0) totalCaptureTimeSeconds = 10;
+        double speedPerTick = 100.0 / (totalCaptureTimeSeconds * 20.0);
+
+        if (capturingTeam != team) {
+            captureProgress -= speedPerTick;
+            if (captureProgress <= 0.0) {
+                captureProgress = 0.0;
+                capturingTeam = team;
+            }
+        } else {
+            captureProgress += speedPerTick;
+            if (captureProgress >= 100.0) {
+                captureProgress = 100.0;
+                this.owner = team;
+            }
+        }
+    }
+
     public CompoundTag serialize() {
         CompoundTag tag = new CompoundTag();
         tag.putInt("index", index);
+        tag.putString("assignedTeam", assignedTeam.name());
         tag.putInt("x", center.getX());
         tag.putInt("y", center.getY());
         tag.putInt("z", center.getZ());
@@ -62,11 +90,14 @@ public class CapturePoint {
     }
 
     public static CapturePoint deserialize(CompoundTag tag) {
+        Team assigned = tag.contains("assignedTeam") ? Team.valueOf(tag.getString("assignedTeam")) : Team.NEUTRAL;
         CapturePoint p = new CapturePoint(
                 tag.getInt("index"),
+                assigned,
                 new BlockPos(tag.getInt("x"), tag.getInt("y"), tag.getInt("z")),
                 tag.getInt("length"), tag.getInt("width"),
-                Team.valueOf(tag.getString("owner")));
+                Team.valueOf(tag.getString("owner")),
+                true);
         p.captureProgress = tag.getDouble("progress");
         p.capturingTeam = Team.valueOf(tag.getString("capturingTeam"));
         if (tag.contains("redSpawn")) p.redSpawn = TeamSpawnPoint.deserialize(tag.getCompound("redSpawn"));

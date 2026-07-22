@@ -2,7 +2,7 @@ package com.tacticalpvp.mod.hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.overlay.IGuiOverlay;
+import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraft.network.chat.Component;
 
 /**
