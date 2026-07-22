@@ -1,0 +1,14 @@
+{
+  "percentLimit": 20,
+  "items": [
+    { "item": "minecraft:leather_chestplate", "count": 1 },
+    { "item": "minecraft:tnt", "count": 3 },
+    {
+      "type": "random_weapon",
+      "options": [
+        { "item": "minecraft:fire_charge", "weight": 60, "count": 4 },
+        { "item": "minecraft:tnt_minecart", "weight": 40, "count": 1 }
+      ]
+    }
+  ]
+}

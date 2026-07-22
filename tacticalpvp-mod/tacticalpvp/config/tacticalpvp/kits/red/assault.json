@@ -1,0 +1,18 @@
+{
+  "_readme": "Дивіться README.md розділ 'Конфігурація кітів' для повного опису полів weight/chance та прив'язки набоїв.",
+  "percentLimit": 50,
+  "items": [
+    { "item": "minecraft:iron_chestplate", "count": 1 },
+    { "item": "minecraft:iron_leggings", "count": 1 },
+    { "item": "minecraft:shield", "count": 1 },
+    {
+      "type": "random_weapon",
+      "_comment": "Гравець отримає РІВНО ОДНУ зброю з трьох, ймовірність пропорційна 'weight'. Кожна опція має власну кількість набоїв (ammoItem/ammoCount), що видаються РАЗОМ із обраною зброєю.",
+      "options": [
+        { "item": "minecraft:crossbow", "weight": 50, "count": 1, "ammoItem": "minecraft:arrow", "ammoCount": 32 },
+        { "item": "minecraft:bow", "weight": 30, "count": 1, "ammoItem": "minecraft:arrow", "ammoCount": 32 },
+        { "item": "minecraft:trident", "weight": 20, "count": 1 }
+      ]
+    }
+  ]
+}

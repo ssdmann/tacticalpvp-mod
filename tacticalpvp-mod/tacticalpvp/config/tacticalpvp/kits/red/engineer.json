@@ -1,0 +1,15 @@
+{
+  "percentLimit": 20,
+  "items": [
+    { "item": "minecraft:iron_pickaxe", "count": 1 },
+    { "item": "minecraft:cobblestone", "count": 64 },
+    { "item": "minecraft:oak_planks", "count": 32 },
+    {
+      "type": "random_weapon",
+      "options": [
+        { "item": "minecraft:crossbow", "weight": 70, "count": 1, "ammoItem": "minecraft:arrow", "ammoCount": 16 },
+        { "item": "minecraft:iron_axe", "weight": 30, "count": 1 }
+      ]
+    }
+  ]
+}

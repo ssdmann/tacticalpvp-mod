@@ -1,0 +1,8 @@
+{
+  "percentLimit": 10,
+  "items": [
+    { "item": "minecraft:elytra", "count": 1 },
+    { "item": "minecraft:firework_rocket", "count": 16 },
+    { "item": "minecraft:spyglass", "count": 1 }
+  ]
+}

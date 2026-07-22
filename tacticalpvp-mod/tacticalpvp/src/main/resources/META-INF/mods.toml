@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+issueTrackerURL="https://example.com"
+
+[[mods]]
+modId="tacticalpvp"
+version="1.0.0"
+displayName="Tactical PvP / Sector Control"
+description='''Тактичний PvP режим із лінійним захопленням точок, системою відродження,
+класами, кітами, в'язницею та азимутальним компасом.'''
+authors="TacticalPvP Team"
+
+[[dependencies.tacticalpvp]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.tacticalpvp]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.20.2)"
+    ordering="NONE"
+    side="BOTH"
