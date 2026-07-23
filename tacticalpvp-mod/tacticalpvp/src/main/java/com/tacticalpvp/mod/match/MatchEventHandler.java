@@ -1,11 +1,13 @@
 package com.tacticalpvp.mod.match;
 
+import com.tacticalpvp.mod.menu.ClassSelectionMenu;
 import com.tacticalpvp.mod.network.MatchHudSyncPacket;
 import com.tacticalpvp.mod.network.NetworkHandler;
 import com.tacticalpvp.mod.points.CapturePoint;
 import com.tacticalpvp.mod.points.SpawnLogic;
 import com.tacticalpvp.mod.points.TeamSpawnPoint;
 import com.tacticalpvp.mod.util.PlayerTeamTracker;
+import com.tacticalpvp.mod.util.ScoreboardTeamManager;
 import com.tacticalpvp.mod.util.TacticalWorldData;
 import com.tacticalpvp.mod.util.Team;
 import net.minecraft.core.BlockPos;
@@ -14,10 +16,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.server.ServerLifecycleHooks;
 import org.joml.Vector3f;
@@ -30,7 +37,22 @@ import java.util.UUID;
 public class MatchEventHandler {
 
     private final Map<UUID, Integer> waitingPlayers = new HashMap<>();
-    private int zoneParticleTimer = 0;
+
+    @SubscribeEvent
+    public void onEnderEyeRightClick(PlayerInteractEvent.RightClickItem event) {
+        if (event.getItemStack().is(Items.ENDER_EYE)) {
+            if (!event.getLevel().isClientSide && event.getEntity() instanceof ServerPlayer serverPlayer) {
+                // Чистий заголовок "Вибір класу"
+                NetworkHooks.openScreen(serverPlayer,
+                        new SimpleMenuProvider(
+                                (id, inv, p) -> new ClassSelectionMenu(id, inv),
+                                Component.literal("Вибір класу")));
+
+                event.setCanceled(true);
+                event.setCancellationResult(InteractionResult.SUCCESS);
+            }
+        }
+    }
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
@@ -50,56 +72,42 @@ public class MatchEventHandler {
 
         tickWaitingPlayers(server, data);
         checkTeamZones(server, data);
-        drawTeamZones(level, data); // Підсвітка зон вибору команд частками
+        drawTeamZones(level, data);
     }
 
     private void tickPrestart(MinecraftServer server, MatchState state) {
         state.prestartRemainingTicks--;
-        int secondsLeft = state.prestartRemainingTicks / 20;
+        int secondsLeft = Math.max(0, state.prestartRemainingTicks / 20);
 
-        // --- ФІНАЛ ВІДЛІКУ: АВТО-ВИБІР КІТІВ ТА ЗАПУСК МАТЧУ ---
         if (state.prestartRemainingTicks <= 0) {
             ServerLevel level = server.overworld();
             TacticalWorldData data = TacticalWorldData.get(level);
 
-            // 1. Автоматично видаємо кіт гравцям, які не обрали його самі
             assignDefaultKitsToRemainingPlayers(server, data);
 
-            // 2. Переводимо матч у фазу RUNNING
             state.phase = MatchState.Phase.RUNNING;
             state.matchRemainingTicks = state.matchDurationTicks;
             data.setDirty();
 
-            broadcast(server, Component.translatable("message.tacticalpvp.match_started"));
+            broadcast(server, Component.literal("§aМатч розпочато!"));
             return;
         }
 
-        // Повідомлення в чат / над хотбаром
-        if (secondsLeft <= 10 && state.prestartRemainingTicks % 20 == 0) {
-            if (secondsLeft > 0) {
-                Component msg = Component.literal("До старту: " + secondsLeft + " сек.");
-                for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-                    p.displayClientMessage(msg, true); // Повідомлення НАД хотбаром (ActionBar)
-                }
-            }
-        } else if (state.prestartRemainingTicks % (20 * 20) == 0 && secondsLeft > 0) {
-            broadcast(server, Component.translatable("message.tacticalpvp.prestart_countdown", secondsLeft / 60));
+        // ПЛАВНИЙ ВІДЛІК НАД ХОТБАРОМ (ActionBar)
+        Component msg = Component.literal("§eДо старту матчу: §c" + secondsLeft + " сек.");
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            p.displayClientMessage(msg, true);
         }
     }
 
-    /**
-     * Знаходить гравців із "Оком Ендера" в інвентарі (які не обрали клас)
-     * і видає їм перший вільний за лімітом клас.
-     */
     private void assignDefaultKitsToRemainingPlayers(MinecraftServer server, TacticalWorldData data) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Team team = PlayerTeamTracker.get(player.getUUID());
             if (team == Team.NEUTRAL) continue;
 
-            // Перевіряємо чи є у гравця Око вибору класу
             boolean hasEye = false;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
-                if (player.getInventory().getItem(i).getItem() == com.tacticalpvp.mod.item.ModItems.ENDER_EYE_KIT.get()) {
+                if (player.getInventory().getItem(i).is(Items.ENDER_EYE)) {
                     hasEye = true;
                     break;
                 }
@@ -109,16 +117,13 @@ public class MatchEventHandler {
                 int teamSize = PlayerTeamTracker.countTeam(team);
                 com.tacticalpvp.mod.kits.ClassLimitManager limitManager = com.tacticalpvp.mod.TacticalPvpMod.CLASS_LIMIT_MANAGER;
 
-                // Шукаємо перший клас, у якого є вільний слот
                 for (com.tacticalpvp.mod.kits.PlayerClass pClass : com.tacticalpvp.mod.kits.PlayerClass.values()) {
                     if (limitManager.hasFreeSlot(team, pClass, teamSize)) {
-                        // Призначаємо клас і видаємо кіт
                         limitManager.assign(player.getUUID(), team, pClass);
                         com.tacticalpvp.mod.kits.KitDispenser.giveKit(player, team, pClass);
 
-                        // Видаляємо Око з інвентарю
                         player.getInventory().clearOrCountMatchingItems(
-                                stack -> stack.getItem() == com.tacticalpvp.mod.item.ModItems.ENDER_EYE_KIT.get(), 1, player.getInventory());
+                                stack -> stack.is(Items.ENDER_EYE), 1, player.getInventory());
 
                         player.sendSystemMessage(Component.literal("§eЧас вийшов! Вам автоматично призначено клас: §a" + pClass.uaName));
                         break;
@@ -147,17 +152,22 @@ public class MatchEventHandler {
         state.phase = MatchState.Phase.POSTMATCH;
         state.postMatchRemainingTicks = state.postMatchCountdownTicks;
 
-        String titleText = winner == Team.NEUTRAL ? "НІЧИЯ!" : winner.fullTitleWord() + " ПЕРЕМОГЛИ!";
+        String titleText = switch (winner) {
+            case RED -> "§cЧервоні перемогли!";
+            case BLUE -> "§9Сині перемогли!";
+            default -> "§eНІЧИЯ!";
+        };
+
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             p.connection.send(new net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket(
                     Component.literal(titleText)));
+            p.sendSystemMessage(Component.literal(titleText));
         }
     }
 
     private void tickPostmatch(MinecraftServer server, TacticalWorldData data, MatchState state) {
         state.postMatchRemainingTicks--;
         if (state.postMatchRemainingTicks <= 0) {
-            // 1. Повернення у загальне лобі, очищення та перенесення точки спавну гравців
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                 p.getInventory().clearContent();
                 p.removeAllEffects();
@@ -166,23 +176,21 @@ public class MatchEventHandler {
                     p.teleportTo(server.overworld(), state.generalLobby.getX() + 0.5,
                             state.generalLobby.getY(), state.generalLobby.getZ() + 0.5, p.getYRot(), p.getXRot());
 
-                    // Переносимо точку спавну гравця в загальне лобі
                     p.setRespawnPosition(server.overworld().dimension(), state.generalLobby, 0.0f, true, false);
                 }
             }
 
-            // 2. Скидання точок у нейтральний стан
             for (CapturePoint point : data.points.values()) {
                 point.owner = Team.NEUTRAL;
                 point.captureProgress = 0;
                 point.capturingTeam = Team.NEUTRAL;
             }
 
-            // 3. Скидання стану матчу
             state.phase = MatchState.Phase.LOBBY;
             state.redScore = 0;
             state.blueScore = 0;
             PlayerTeamTracker.clear();
+            ScoreboardTeamManager.resetAll(server);
             com.tacticalpvp.mod.TacticalPvpMod.CLASS_LIMIT_MANAGER.reset();
             waitingPlayers.clear();
 
@@ -224,7 +232,7 @@ public class MatchEventHandler {
                 player.teleportTo(level, lobby.getX() + 0.5, lobby.getY(), lobby.getZ() + 0.5, player.getYRot(), player.getXRot());
             }
 
-            int respawnTicks = data.matchState.lobbyTimerTicks > 0 ? data.matchState.lobbyTimerTicks : 200;
+            int respawnTicks = data.matchState.lobbyTimerTicks > 0 ? data.matchState.lobbyTimerTicks : 100;
             waitingPlayers.put(player.getUUID(), respawnTicks);
         }
     }
@@ -234,10 +242,20 @@ public class MatchEventHandler {
         while (it.hasNext()) {
             Map.Entry<UUID, Integer> e = it.next();
             int remaining = e.getValue() - 1;
+            ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
+
+            if (p != null && p.isAlive()) {
+                int secondsLeft = (remaining / 20) + 1;
+                p.displayClientMessage(
+                        Component.literal("§eНа штурм посадки через: §c" + secondsLeft + " сек."),
+                        true
+                );
+            }
+
             if (remaining <= 0) {
-                ServerPlayer p = server.getPlayerList().getPlayer(e.getKey());
                 if (p != null && p.isAlive()) {
                     respawnAtFrontline(server, data, p);
+                    p.displayClientMessage(Component.literal("§aУ БІЙ!"), true);
                 }
                 it.remove();
             } else {
@@ -261,7 +279,6 @@ public class MatchEventHandler {
                 spawn.pos.getZ() + 0.5 + dz, player.getYRot(), player.getXRot());
     }
 
-    // ================= Зони вибору команди (Кольоровий напис) =================
     private void checkTeamZones(MinecraftServer server, TacticalWorldData data) {
         boolean swappingLocked = data.matchState.phase != MatchState.Phase.LOBBY;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -271,9 +288,13 @@ public class MatchEventHandler {
                 if (current == zone.team) continue;
                 if (current != Team.NEUTRAL && swappingLocked) continue;
 
+                // 1. Встановлюємо команду у моді
                 PlayerTeamTracker.set(player.getUUID(), zone.team);
 
-                // Кольоровий напис команди
+                // 2. ФАРБУЄМО НІК У ВАНІЛЬНОМУ SCOREBOARD
+                ScoreboardTeamManager.updatePlayerNameTag(server, player, zone.team);
+
+                // 3. Кольоровий напис
                 int colorHex = zone.team == Team.RED ? 0xFF5555 : 0x5555FF;
                 Component titleComponent = Component.literal(zone.team.fullTitleWord())
                         .withStyle(style -> style.withColor(colorHex).withBold(true));
@@ -283,7 +304,6 @@ public class MatchEventHandler {
         }
     }
 
-    // ================= Підсвітка зон вибору команд частками =================
     private void drawTeamZones(ServerLevel level, TacticalWorldData data) {
         if (data.teamZones.isEmpty()) return;
 
@@ -294,11 +314,9 @@ public class MatchEventHandler {
             int minX = zone.center.getX() - halfL, maxX = zone.center.getX() + halfL;
             int minZ = zone.center.getZ() - halfW, maxZ = zone.center.getZ() + halfW;
 
-            // Яскраві кольори частинок пилу (Червоний або Синій)
             Vector3f color = zone.team == Team.RED ? new Vector3f(1.0f, 0.1f, 0.1f) : new Vector3f(0.1f, 0.4f, 1.0f);
             DustParticleOptions particleOptions = new DustParticleOptions(color, 1.2f);
 
-            // Крок 1 для щільної прямокутної рамки
             for (int x = minX; x <= maxX; x++) {
                 level.sendParticles(particleOptions, x + 0.5, y + 0.2, minZ + 0.5, 1, 0, 0, 0, 0);
                 level.sendParticles(particleOptions, x + 0.5, y + 0.2, maxZ + 0.5, 1, 0, 0, 0, 0);

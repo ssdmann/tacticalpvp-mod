@@ -149,9 +149,6 @@ Writing Output: /workspaces/tacticalpvp-mod/tacticalpvp-mod/tacticalpvp/build/re
   assets/tacticalpvp/models/
   assets/tacticalpvp/models/item/
   assets/tacticalpvp/models/item/ender_eye_kit.json
-  assets/tacticalpvp/textures/
-  assets/tacticalpvp/textures/item/
-  assets/tacticalpvp/textures/item/ender_eye_kit.png.png
   com/
   com/tacticalpvp/
   com/tacticalpvp/mod/
@@ -206,5 +203,6 @@ Writing Output: /workspaces/tacticalpvp-mod/tacticalpvp-mod/tacticalpvp/build/re
   com/tacticalpvp/mod/punish/PunishTickHandler.class
   com/tacticalpvp/mod/util/
   com/tacticalpvp/mod/util/PlayerTeamTracker.class
+  com/tacticalpvp/mod/util/ScoreboardTeamManager.class
   com/tacticalpvp/mod/util/TacticalWorldData.class
   com/tacticalpvp/mod/util/Team.class

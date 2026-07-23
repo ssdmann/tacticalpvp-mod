@@ -1,6 +1,6 @@
 {
-  "parent": "item/generated",
+  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "tacticalpvp:item/ender_eye_kit"
+    "layer0": "minecraft:item/ender_eye"
   }
 }

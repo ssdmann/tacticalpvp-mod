@@ -9,7 +9,8 @@ import com.tacticalpvp.mod.points.CaptureTickHandler;
 import com.tacticalpvp.mod.punish.PunishTickHandler;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items; // Додано імпорт ванільних предметів
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
@@ -44,9 +45,9 @@ public class TacticalPvpMod {
     public static final RegistryObject<CreativeModeTab> TACTICAL_TAB = CREATIVE_TABS.register("tactical_tab",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.tacticalpvp.tactical_tab"))
-                    .icon(() -> new net.minecraft.world.item.ItemStack(ModItems.ENDER_EYE_KIT.get()))
+                    .icon(() -> new ItemStack(Items.ENDER_EYE)) // ВАНІЛЬНЕ ОКО ЕНДЕРА
                     .displayItems((params, output) -> {
-                        output.accept(ModItems.ENDER_EYE_KIT.get());
+                        output.accept(Items.ENDER_EYE); // ВАНІЛЬНЕ ОКО ЕНДЕРА
                     })
                     .build());
 
@@ -66,8 +67,7 @@ public class TacticalPvpMod {
         MinecraftForge.EVENT_BUS.register(new MatchEventHandler());
         MinecraftForge.EVENT_BUS.register(this);
 
-        // Реєстрація кастомних GUI-оверлеїв (компас + рахунок/таймер) відбувається
-        // окремо у ClientGuiOverlays через RegisterGuiOverlaysEvent на mod bus.
+        // Реєстрація кастомних GUI-оверлеїв (компас + рахунок/таймер)
         modEventBus.addListener(com.tacticalpvp.mod.hud.ClientGuiOverlays::onRegisterOverlays);
     }
 

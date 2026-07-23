@@ -7,7 +7,8 @@ import net.minecraft.nbt.CompoundTag;
 public class CapturePoint {
 
     public final int index;
-    public final Team assignedTeam; // До якої лінії/команди належить точка (RED чи BLUE)
+    public final Team assignedTeam; // До якої лінії/команди належить точка (RED, BLUE або NEUTRAL)
+    public final String id;         // Ідентифікатор точки
     public BlockPos center;
     public int length;
     public int width;
@@ -24,7 +25,8 @@ public class CapturePoint {
     public CapturePoint(int index, Team assignedTeam, BlockPos center, int length, int width) {
         this.index = index;
         this.assignedTeam = assignedTeam;
-        this.center = center.below(); // Поправка Y - 1
+        this.id = index + "_" + assignedTeam.name().toLowerCase();
+        this.center = center; 
         this.length = length;
         this.width = width;
         this.owner = Team.NEUTRAL; // Завжди нейтральна при створенні!
@@ -33,6 +35,7 @@ public class CapturePoint {
     private CapturePoint(int index, Team assignedTeam, BlockPos center, int length, int width, Team owner, boolean isRaw) {
         this.index = index;
         this.assignedTeam = assignedTeam;
+        this.id = index + "_" + assignedTeam.name().toLowerCase();
         this.center = center;
         this.length = length;
         this.width = width;
@@ -40,15 +43,20 @@ public class CapturePoint {
     }
 
     /**
-     * Унікальний ID точки для карти/збережень (наприклад: "2_red" або "2_blue")
+     * Унікальний ID точки для карти/збережень (наприклад: "2_red" або "1_neutral")
      */
     public String UniqueId() {
-        return index + "_" + assignedTeam.name().toLowerCase();
+        return id;
     }
 
+    /**
+     * Фізична зона захоплення (нескінченний вертикальний стовп)
+     */
     public boolean isInside(BlockPos pos) {
         int halfL = length / 2;
         int halfW = width / 2;
+
+        // Перевіряємо лише X та Z (стовп)
         return pos.getX() >= center.getX() - halfL && pos.getX() <= center.getX() + halfL
                 && pos.getZ() >= center.getZ() - halfW && pos.getZ() <= center.getZ() + halfW;
     }

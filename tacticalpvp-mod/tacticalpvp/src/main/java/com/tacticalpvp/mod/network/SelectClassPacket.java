@@ -1,7 +1,6 @@
 package com.tacticalpvp.mod.network;
 
 import com.tacticalpvp.mod.TacticalPvpMod;
-import com.tacticalpvp.mod.item.ModItems;
 import com.tacticalpvp.mod.kits.ClassLimitManager;
 import com.tacticalpvp.mod.kits.KitDispenser;
 import com.tacticalpvp.mod.kits.PlayerClass;
@@ -11,13 +10,14 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
 /**
  * Клієнт -> Сервер: обробка вибору класу у GUI.
- * Перевіряє ліміт класу, видає кіт та ВИДАЛЯЄ Око Ендера з інвентарю.
+ * Перевіряє ліміт класу, видає кіт та ВИДАЛЯЄ ванільне Око Ендера з інвентарю.
  */
 public class SelectClassPacket {
 
@@ -56,21 +56,21 @@ public class SelectClassPacket {
                 return;
             }
 
-            // 2. Точне видалення РІВНО 1 Ока Ендера з інвентарю
+            // 2. Точне видалення РІВНО 1 ванільного Ока Ендера з інвентарю
             boolean removed = false;
             for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                 ItemStack stack = player.getInventory().getItem(i);
-                if (stack.getItem() == ModItems.ENDER_EYE_KIT.get()) {
+                if (stack.is(Items.ENDER_EYE)) {
                     stack.shrink(1);
                     removed = true;
                     break;
                 }
             }
 
-            // Якщо з якоїсь причини Ока не виявилося, пробуємо ванільне очищення 1 штуки
+            // Якщо з якоїсь причини Ока не виявилося через прямий цикл, пробуємо ванільне очищення 1 штуки
             if (!removed) {
                 int count = player.getInventory().clearOrCountMatchingItems(
-                        stack -> stack.getItem() == ModItems.ENDER_EYE_KIT.get(), 1, player.getInventory());
+                        stack -> stack.is(Items.ENDER_EYE), 1, player.getInventory());
                 if (count <= 0) return; // Немає Ока — кіт не видаємо!
             }
 
