@@ -169,7 +169,6 @@ Writing Output: /workspaces/tacticalpvp-mod/tacticalpvp-mod/tacticalpvp/build/re
   com/tacticalpvp/mod/item/ModItems.class
   com/tacticalpvp/mod/kits/
   com/tacticalpvp/mod/kits/ClassLimitManager.class
-  com/tacticalpvp/mod/kits/KitConfigLoader$1.class
   com/tacticalpvp/mod/kits/KitConfigLoader$ClassKitConfig.class
   com/tacticalpvp/mod/kits/KitConfigLoader.class
   com/tacticalpvp/mod/kits/KitDispenser.class
@@ -206,3 +205,4 @@ Writing Output: /workspaces/tacticalpvp-mod/tacticalpvp-mod/tacticalpvp/build/re
   com/tacticalpvp/mod/util/ScoreboardTeamManager.class
   com/tacticalpvp/mod/util/TacticalWorldData.class
   com/tacticalpvp/mod/util/Team.class
+  pack.mcmeta
